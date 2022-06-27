@@ -23,6 +23,18 @@ from openzeppelin.token.erc721.library import (
 )
 
 
+@storage_var
+func token_sex(token_id: Uint256) -> (sex : felt):
+end
+
+@storage_var
+func token_legs(token_id: Uint256) -> (legs: felt):
+end
+
+@storage_var
+func token_wings(token_id: Uint256) -> (legs: felt):
+end
+
 #
 # Constructor
 #
@@ -42,6 +54,10 @@ func constructor{
     let to = to_
     let token_id: Uint256 = Uint256(1, 0)
     ERC721_mint(to, token_id)
+    # Set expeced value
+    token_sex.write(token_id, 2)
+    token_legs.write(token_id, 1)
+    token_wings.write(token_id, 2)
     return ()
 end
 
@@ -110,8 +126,17 @@ func isApprovedForAll{
     return (isApproved)
 end
 
-
-
+@view
+func get_animal_characteristics{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(token_id : Uint256) -> (sex : felt, legs : felt, wings : felt):
+    let (sex: felt) = token_sex.read(token_id)
+    let (legs: felt) = token_legs.read(token_id)
+    let (wings: felt) = token_wings.read(token_id)
+    return (sex, legs, wings)
+end
 #
 # Externals
 #
