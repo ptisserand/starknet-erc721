@@ -26,6 +26,13 @@ from openzeppelin.token.erc721.library import (
     ERC721_safeTransferFrom,
 )
 
+from openzeppelin.token.erc721_enumerable.library import (
+    ERC721_Enumerable_burn,
+    ERC721_Enumerable_initializer,
+    ERC721_Enumerable_mint,
+    ERC721_Enumerable_tokenOfOwnerByIndex,
+)
+
 @storage_var
 func token_id_storage() -> (token_id_storage: Uint256):
 end
@@ -58,6 +65,7 @@ func constructor{
         to_: felt
     ):
     ERC721_initializer(name, symbol)
+    ERC721_Enumerable_initializer()
     # first token must be owned by evaluator contract
     let to = to_
     let token_id: Uint256 = Uint256(1, 0)
@@ -143,6 +151,16 @@ func get_animal_characteristics{
     return (sex, legs, wings)
 end
 
+@view
+func token_of_owner_by_index{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(account : felt, index_ : felt) -> (token_id : Uint256):
+    let index: Uint256 = Uint256(index_, 0)
+    let token_id: Uint256 = ERC721_Enumerable_tokenOfOwnerByIndex(account, index)
+    return (token_id)
+end
 #
 # Externals
 #
@@ -208,6 +226,18 @@ func declare_animal{
     return (token_id)
 end
 
+@external
+func declare_dead_animal{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(token_id : Uint256):
+    ERC721_Enumerable_burn(token_id)
+    token_sex.write(token_id, 0)
+    token_legs.write(token_id, 0)
+    token_wings.write(token_id, 0)
+    return ()
+end
 
 #
 # Internals
@@ -215,7 +245,7 @@ end
 func mint_animal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(to_: felt, sex: felt, legs: felt, wings: felt) -> (token_id: Uint256):
     let to = to_
     let token_id: Uint256 = token_id_storage.read()
-    ERC721_mint(to, token_id)
+    ERC721_Enumerable_mint(to, token_id)
     let token_id: Uint256 = token_id_storage.read()
     token_sex.write(token_id, sex)
     token_legs.write(token_id, legs)
