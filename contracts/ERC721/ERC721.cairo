@@ -4,7 +4,7 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
-from starkware.starknet.common.syscalls import get_caller_address
+from starkware.starknet.common.syscalls import get_contract_address, get_caller_address
 from starkware.cairo.common.uint256 import (
     Uint256,
     uint256_add,
@@ -33,10 +33,11 @@ from openzeppelin.token.erc721_enumerable.library import (
     ERC721_Enumerable_tokenOfOwnerByIndex,
 )
 
+from contracts.token.ERC20.IERC20 import IERC20
+
 @storage_var
 func token_id_storage() -> (token_id_storage: Uint256):
 end
-
 
 @storage_var
 func token_sex(token_id: Uint256) -> (sex : felt):
@@ -48,6 +49,18 @@ end
 
 @storage_var
 func token_wings(token_id: Uint256) -> (legs: felt):
+end
+
+@storage_var
+func breeders(account: felt) -> (enable: felt):
+end
+
+@storage_var
+func dummy_token_address_storage() -> (dummy_token_address_storage: felt):
+end
+
+@storage_var
+func registration_price_storage() -> (registration_price_storage: Uint256):
 end
 
 #
@@ -71,6 +84,9 @@ func constructor{
     let token_id: Uint256 = Uint256(1, 0)
     token_id_storage.write(token_id)
     mint_animal(to, 2, 1, 2)
+    dummy_token_address_storage.write(0x07ff0a898530b169c5fe6fed9b397a7bbd402973ce2f543965f99d6d4a4c17b8)
+    let price: Uint256 = Uint256(10*1000000000000000000, 0)
+    registration_price_storage.write(price)
     return ()
 end
 
@@ -161,6 +177,26 @@ func token_of_owner_by_index{
     let token_id: Uint256 = ERC721_Enumerable_tokenOfOwnerByIndex(account, index)
     return (token_id)
 end
+
+@view
+func registration_price{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (price : Uint256):
+    let price: Uint256 = registration_price_storage.read()
+    return (price)
+end
+
+@view
+func is_breeder{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(account : felt) -> (is_approved : felt):
+    let (is_approved) = breeders.read(account)
+    return (is_approved)
+end
 #
 # Externals
 #
@@ -239,6 +275,28 @@ func declare_dead_animal{
     return ()
 end
 
+@external
+func register_me_as_breeder{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (is_added : felt):
+    let (sender_address) = get_caller_address()
+    let (contract_address) = get_contract_address()
+    let (enable) = breeders.read(sender_address)
+    if 1 == enable:
+        return (0)
+    end
+    let (price) = registration_price_storage.read()
+    let (dummy_token_address) = dummy_token_address_storage.read()
+    IERC20.transferFrom(contract_address=dummy_token_address, 
+        sender=sender_address,
+        recipient=contract_address,
+        amount=price)
+    let is_added: felt = 1
+    breeders.write(sender_address, is_added)
+    return (is_added)
+end
 #
 # Internals
 #
